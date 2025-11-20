@@ -408,6 +408,73 @@ wsl hostname -I
 curl.exe -x http://<WSL-IP>:30128 http://example.com
 ```
 
+## Advanced: LoadBalancer with Static IP
+
+**Note**: K3s includes a built-in ServiceLB controller that provides LoadBalancer implementation for on-premises clusters.
+
+Create `loadbalancer-values.yaml`:
+
+```yaml
+service:
+  type: LoadBalancer
+  # For K3s, this will use the node's IP by default
+  # You can specify a static IP from your network range
+  loadBalancerIP: "192.168.1.100"
+  # Restrict access to specific source IPs
+  loadBalancerSourceRanges:
+    - "192.168.0.0/16"
+    - "10.0.0.0/8"
+  # Use Local to preserve source IP
+  externalTrafficPolicy: Local
+
+# Squid configuration
+squidConfig: |
+  pid_filename /run/squid/squid.pid
+  http_port 3128
+
+  acl localnet src 0.0.0.0/0
+  http_access allow localnet
+  http_access deny all
+
+  cache_dir ufs /var/spool/squid 100 16 256
+  access_log /var/log/squid/access.log squid
+```
+
+Deploy:
+
+```bash
+helm upgrade --install squid-proxy ./helm-chart/squid-proxy \
+  -f loadbalancer-values.yaml \
+  --namespace squid \
+  --create-namespace
+```
+
+Check the assigned external IP:
+
+```bash
+kubectl get svc squid-proxy -n squid
+```
+
+Test from WSL or Windows:
+
+```bash
+# Get the LoadBalancer IP
+LB_IP=$(kubectl get svc squid-proxy -n squid -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+# Test the proxy
+curl -x http://$LB_IP:3128 http://example.com
+```
+
+From Windows PowerShell:
+
+```powershell
+# Get the LoadBalancer IP
+$LB_IP = kubectl get svc squid-proxy -n squid -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+
+# Test the proxy
+curl.exe -x http://${LB_IP}:3128 http://example.com
+```
+
 ## Quick Reference
 
 ```bash

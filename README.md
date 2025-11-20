@@ -107,6 +107,51 @@ helm install squid-proxy oci://registry-1.docker.io/johan91/squid-proxy \
   -f custom-values.yaml
 ```
 
+### Example: LoadBalancer with Static IP
+
+Create a `loadbalancer-values.yaml` file:
+
+```yaml
+service:
+  type: LoadBalancer
+  # Specify a static IP (cloud provider dependent)
+  loadBalancerIP: "192.168.1.100"
+  # Optionally restrict access to specific source IPs
+  loadBalancerSourceRanges:
+    - "10.0.0.0/8"
+    - "172.16.0.0/12"
+  # Control traffic routing
+  externalTrafficPolicy: Local
+
+# Squid configuration with PID file fix
+squidConfig: |
+  pid_filename /run/squid/squid.pid
+  http_port 3128
+
+  # Allow from anywhere (adjust as needed)
+  acl all src 0.0.0.0/0
+  http_access allow all
+
+  cache_dir ufs /var/spool/squid 100 16 256
+  access_log /var/log/squid/access.log squid
+```
+
+Deploy with LoadBalancer:
+
+```bash
+helm install squid-proxy oci://registry-1.docker.io/johan91/squid-proxy \
+  -f loadbalancer-values.yaml
+```
+
+Or use `--set` flags:
+
+```bash
+helm install squid-proxy oci://registry-1.docker.io/johan91/squid-proxy \
+  --set service.type=LoadBalancer \
+  --set service.loadBalancerIP="192.168.1.100" \
+  --set service.externalTrafficPolicy=Local
+```
+
 ## Architecture
 
 ### Components
@@ -278,6 +323,10 @@ curl -x http://localhost:3128 http://example.com
 | `image.tag` | Docker image tag | `latest` |
 | `service.type` | Kubernetes service type | `ClusterIP` |
 | `service.port` | Service port | `3128` |
+| `service.loadBalancerIP` | Static IP for LoadBalancer | `""` |
+| `service.loadBalancerSourceRanges` | Allowed source IP ranges | `[]` |
+| `service.externalTrafficPolicy` | External traffic policy | `""` |
+| `service.nodePort` | NodePort (if type is NodePort) | `""` |
 | `resources.limits.cpu` | CPU limit | `500m` |
 | `resources.limits.memory` | Memory limit | `512Mi` |
 | `persistence.enabled` | Enable persistent cache | `true` |

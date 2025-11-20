@@ -42,6 +42,15 @@ service:
   port: 3128
   targetPort: 3128
   annotations: {}
+  # LoadBalancer specific configuration (only used when type is LoadBalancer)
+  # Static IP for LoadBalancer (cloud provider specific)
+  loadBalancerIP: ""
+  # Restrict traffic to specific source IP ranges
+  loadBalancerSourceRanges: []
+  # Control traffic routing (Cluster or Local)
+  externalTrafficPolicy: ""
+  # NodePort configuration (only used when type is NodePort or LoadBalancer)
+  nodePort: ""
 
 resources:
   limits:
