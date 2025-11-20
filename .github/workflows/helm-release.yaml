@@ -1,0 +1,72 @@
+name: Release Helm Chart
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'helm-chart/**'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  DOCKER_USERNAME: johan91
+  HELM_CHART_PATH: helm-chart/squid-proxy
+
+jobs:
+  release-helm-chart:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Log in to Docker Hub
+        run: |
+          echo ${{ secrets.DOCKER_HUB_TOKEN }} | helm registry login registry-1.docker.io -u ${{ env.DOCKER_USERNAME }} --password-stdin
+
+      - name: Package Helm chart
+        run: |
+          cd helm-chart
+          helm package squid-proxy
+          echo "Chart packaged successfully"
+          ls -la *.tgz
+
+      - name: Get chart version
+        id: chart_version
+        run: |
+          CHART_VERSION=$(helm show chart ${{ env.HELM_CHART_PATH }} | grep '^version:' | awk '{print $2}')
+          echo "version=$CHART_VERSION" >> $GITHUB_OUTPUT
+          echo "Chart version: $CHART_VERSION"
+
+      - name: Push Helm chart to Docker Hub (OCI)
+        run: |
+          CHART_VERSION="${{ steps.chart_version.outputs.version }}"
+          cd helm-chart
+          helm push squid-proxy-${CHART_VERSION}.tgz oci://registry-1.docker.io/${{ env.DOCKER_USERNAME }}
+          echo "Helm chart pushed to oci://registry-1.docker.io/${{ env.DOCKER_USERNAME }}/squid-proxy:${CHART_VERSION}"
+
+      - name: Logout from Docker Hub
+        if: always()
+        run: helm registry logout registry-1.docker.io
+
+      - name: Summary
+        run: |
+          echo "## Helm Chart Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Chart Version: ${{ steps.chart_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Registry: oci://registry-1.docker.io/${{ env.DOCKER_USERNAME }}/squid-proxy" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation command:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "helm install squid-proxy oci://registry-1.docker.io/${{ env.DOCKER_USERNAME }}/squid-proxy --version ${{ steps.chart_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: squid-proxy
+description: A Helm chart for deploying Squid proxy server on Kubernetes
+type: application
+version: 1.0.0
+appVersion: "6.1"
+keywords:
+  - squid
+  - proxy
+  - cache
+  - http
+home: https://github.com/johan91/squid-k8s
+sources:
+  - https://github.com/johan91/squid-k8s
+maintainers:
+  - name: johan91

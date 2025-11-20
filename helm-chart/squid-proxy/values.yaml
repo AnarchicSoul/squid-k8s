@@ -1,0 +1,143 @@
+# Default values for squid-proxy
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: johan91/squid-proxy
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 13
+  runAsUser: 13
+  runAsNonRoot: true
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  port: 3128
+  targetPort: 3128
+  annotations: {}
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Persistent volume for Squid cache
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+
+# Squid configuration - customize your squid.conf here
+squidConfig: |
+  # Squid Proxy Configuration
+  # This configuration can be fully customized via values.yaml
+
+  # Listening port
+  http_port 3128
+
+  # Cache settings
+  cache_dir ufs /var/spool/squid 100 16 256
+  cache_mem 256 MB
+  maximum_object_size_in_memory 512 KB
+  maximum_object_size 4 MB
+
+  # DNS and networking
+  dns_nameservers 8.8.8.8 8.8.4.4
+
+  # Access control
+  acl localnet src 10.0.0.0/8     # RFC1918 possible internal network
+  acl localnet src 172.16.0.0/12  # RFC1918 possible internal network
+  acl localnet src 192.168.0.0/16 # RFC1918 possible internal network
+  acl localnet src fc00::/7       # RFC 4193 local private network range
+  acl localnet src fe80::/10      # RFC 4291 link-local (directly plugged) machines
+
+  acl SSL_ports port 443
+  acl Safe_ports port 80          # http
+  acl Safe_ports port 21          # ftp
+  acl Safe_ports port 443         # https
+  acl Safe_ports port 70          # gopher
+  acl Safe_ports port 210         # wais
+  acl Safe_ports port 1025-65535  # unregistered ports
+  acl Safe_ports port 280         # http-mgmt
+  acl Safe_ports port 488         # gss-http
+  acl Safe_ports port 591         # filemaker
+  acl Safe_ports port 777         # multiling http
+  acl CONNECT method CONNECT
+
+  # Deny requests to certain unsafe ports
+  http_access deny !Safe_ports
+
+  # Deny CONNECT to other than secure SSL ports
+  http_access deny CONNECT !SSL_ports
+
+  # Only allow cachemgr access from localhost
+  http_access allow localhost manager
+  http_access deny manager
+
+  # Allow localhost always
+  http_access allow localhost
+
+  # Allow from local networks
+  http_access allow localnet
+
+  # Default deny
+  http_access deny all
+
+  # Logging
+  access_log /var/log/squid/access.log squid
+  cache_log /var/log/squid/cache.log
+  cache_store_log /var/log/squid/store.log
+
+  # Leave coredumps in the first cache dir
+  coredump_dir /var/spool/squid
+
+  # Add any of your own refresh_pattern entries above these.
+  refresh_pattern ^ftp:           1440    20%     10080
+  refresh_pattern ^gopher:        1440    0%      1440
+  refresh_pattern -i (/cgi-bin/|\?) 0     0%      0
+  refresh_pattern .               0       20%     4320
