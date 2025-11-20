@@ -77,6 +77,9 @@ squidConfig: |
   # Squid Proxy Configuration
   # This configuration can be fully customized via values.yaml
 
+  # PID file location (writable directory for non-root user)
+  pid_filename /run/squid/squid.pid
+
   # Listening port
   http_port 3128
 

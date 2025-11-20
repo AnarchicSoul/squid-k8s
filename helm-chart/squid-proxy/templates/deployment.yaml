@@ -39,6 +39,8 @@ spec:
             - name: config
               mountPath: /etc/squid/squid.conf
               subPath: squid.conf
+            - name: run
+              mountPath: /run/squid
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
       containers:
@@ -75,11 +77,15 @@ spec:
             - name: config
               mountPath: /etc/squid/squid.conf
               subPath: squid.conf
+            - name: run
+              mountPath: /run/squid
       volumes:
         - name: config
           configMap:
             name: {{ include "squid-proxy.fullname" . }}
         - name: logs
+          emptyDir: {}
+        - name: run
           emptyDir: {}
         - name: cache
           {{- if .Values.persistence.enabled }}

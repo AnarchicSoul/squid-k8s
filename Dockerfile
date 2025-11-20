@@ -9,10 +9,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Create necessary directories
+# Create necessary directories and set permissions
 RUN mkdir -p /var/spool/squid && \
     mkdir -p /var/log/squid && \
-    chown -R proxy:proxy /var/spool/squid /var/log/squid
+    mkdir -p /var/run/squid && \
+    mkdir -p /run/squid && \
+    chown -R proxy:proxy /var/spool/squid /var/log/squid /var/run/squid /run/squid
 
 # Expose Squid default port
 EXPOSE 3128
